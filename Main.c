@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <jss.h>
+#include <jss_extended.h>
 
 int main(int argc, char** argv) {  
   int r = JSS_init();
@@ -11,65 +11,32 @@ int main(int argc, char** argv) {
     printf("Startup failed with %d\n", r);
   }
 
-  if (argc < 4) {
-    puts("Too little cli args");
+  HTTPRequest req = newHTTPRequest();
+
+  httpRequestSetMethod(&req, HTTP_GET);
+  httpRequestSetPath(&req, "/");
+  httpRequestSetHttpVersion(&req, 1, 1);
+  httpRequestAddHeader(&req, "Host", "localhost");
+  httpRequestSetBody(&req, "{\"name\":\"Alice\"}");
+
+  Packet request = httpRequestCompose(&req);
+  printf("REQUEST:\n%s\n", request.bytes);
+
+  Socket sock = newSocket();
+  if (sock.vtable->connect(&sock, "127.0.0.1", 8080)) {
+    puts("Cannot connect to server");
     return 1;
   }
 
-  bool isclient = strcmp(argv[1], "client") == 0;
-  char* ip = argv[2];
-  unsigned short port = atoi(argv[3]);
+  sock.vtable->send(&sock, request.bytes, request.length);
 
-  if (isclient) {
-    Socket client = newSocket();
-    puts("Socket created");
-    
-    printf("Connecting to %s:%hu...\n", ip, port);
-    client.vtable->connect(&client, ip, port);
-    printf("Connected to %s:%hu\n", ip, port);
-
-    unsigned char req[] = "Ah ok, no ma ci sta";
-    puts("Sending packet...");
-    client.vtable->send(&client, req, sizeof(req));
-
-    puts("Trying receiving packet...");
-    Packet packet = client.vtable->recv(&client, 4096);
-    if (packet.status) {
-      puts("Can't get response");
-      return 0;
-    }
-    printf("res: '%s'\n", packet.bytes);
-
-    releasePacket(&packet);
-
-    return 0;
+  Packet res = sock.vtable->recv(&sock, 4096);
+  if (res.status) {
+    puts("Cannot get reply");
+    return 1;
   }
 
-  Socket server = newSocket();
-  puts("Socket created");
-  printf("Binding to %s:%hu...\n", ip, port);
-  server.vtable->bind(&server, ip, port);
-  printf("Binded to %s:%hu\n", ip, port);
-  server.vtable->listen(&server, 1);
-  puts("Listening...");
-  Socket client = server.vtable->accept(&server);
-  printf("Client %s:%hu connected.\n", client.ip, client.port);
-  Packet packet = client.vtable->recv(&client, 4096);
-
-  if (packet.status) {
-    printf("Can't get packet. STATUS: %d", packet.status);
-    return 0;
-  }
-  puts("RECV:");
-  for (size_t i = 0; i < packet.length; i++) {
-    putchar(packet.bytes[i]);
-  }
-
-  releasePacket(&packet);
-
-  unsigned char buffer[] = "if (T == 1)\n\tT = 1";
-
-  client.vtable->send(&client, buffer, sizeof(buffer));
+  printf("RESPONSE:\n%s\n", res.bytes);
 
   JSS_cleanup();
 
