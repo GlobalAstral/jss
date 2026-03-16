@@ -75,3 +75,34 @@ Packet httpRequestCompose(HTTPRequest* req) {
     .status = 0
   };
 }
+
+DynamicArray split_string(char* str, size_t length, char sep) {
+  DynamicArray ret = newDynamicArray(sizeof(Slice));
+  size_t base = 0;
+  for (size_t i = 0; i < length; i++) {
+    if (str[i] == sep) {
+      size_t tok_size = i - base;
+      Slice slice = { str + base, tok_size };
+      appendDynamicArray(&ret, &slice);
+      base = i + 1;
+    }
+  }
+
+  size_t tok_size = length - base;
+  Slice slice = { str + base, tok_size };
+  appendDynamicArray(&ret, &slice);
+
+  return ret;
+}
+
+HTTPRequest httpRequestParse(char* req, size_t length) {
+  DynamicArray lines = split_string(req, length, '\n');
+
+  if (lines.length < 2) {
+    puts("Cannot parse http request");
+    exit(1);
+  }
+
+  
+
+}

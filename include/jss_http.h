@@ -41,3 +41,5 @@ void httpRequestSetHttpVersion(HTTPRequest* req, int major, int minor);
 void httpRequestSetBody(HTTPRequest* req, char* body);
 void httpRequestAddHeader(HTTPRequest* req, char* name, char* value);
 Packet httpRequestCompose(HTTPRequest* req);
+
+HTTPRequest httpRequestParse(char* req, size_t length);
